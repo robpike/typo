@@ -15,7 +15,17 @@ import (
 	"unicode/utf8"
 )
 
-const knownWordsFile = "/usr/local/plan9/lib/words"
+var knownWordsFiles = []string{"words", "w2006.txt"}
+
+var (
+	goroot string
+	gopath string
+)
+
+func init() {
+	goroot = os.Getenv("GOROOT")
+	gopath = os.Getenv("GOPATH")
+}
 
 type Word struct {
 	word    string
@@ -52,7 +62,7 @@ func (t Typo) Swap(i, j int) {
 }
 
 var words = make([]Word, 0, 1000)
-var known = make(map[string]bool) // loaded from knownWordsFile
+var known = make(map[string]bool) // loaded from knownWordsFiles
 
 var (
 	singleCount int
@@ -63,8 +73,10 @@ var (
 
 func main() {
 	flag.Parse()
-	for _, w := range readLines(knownWordsFile, nil) {
-		known[w] = true
+	for _, f := range knownWordsFiles {
+		for _, w := range readLines(getPath(f), nil) {
+			known[w] = true
+		}
 	}
 	if len(flag.Args()) == 0 {
 		add("<stdin>", os.Stdin)
@@ -76,6 +88,26 @@ func main() {
 	doubles()
 	stats()
 	spell()
+}
+
+func getPath(base string) string {
+	var dir string
+	if goroot != "" {
+		d := goroot + "/" + "src/pkg/code.google.com/p/rspace.cmd/typo/"
+		if _, err := os.Stat(d + base); err == nil {
+			dir = d
+		}
+	}
+	if dir == "" && gopath != "" {
+		d := gopath + "/" + "src/code.google.com/p/rspace.cmd/typo/"
+		if _, err := os.Stat(d + base); err == nil {
+			dir = d
+		}
+	}
+	if dir == "" {
+		dir = "/usr/local/plan9/lib/"
+	}
+	return dir + base
 }
 
 func readLines(file string, fd *os.File) []string {
