@@ -22,7 +22,7 @@ import (
 
 var knownWordsFiles = []string{"words", "w2006.txt"}
 var nTypos = flag.Int("n", 50, "number of words to print")
-var nDoubles = flag.Bool("repeats", true, "show repeated words, like this this")
+var noRepeats = flag.Bool("r", false, "don't show repeated words words")
 
 var (
 	goroot string
@@ -48,7 +48,7 @@ func main() {
 			add(f, nil)
 		}
 	}
-	doubles()
+	repeats()
 	stats()
 	spell()
 }
@@ -203,8 +203,8 @@ func onlyLower(s string) bool {
 	return true
 }
 
-func doubles() {
-	if !*nDoubles {
+func repeats() {
+	if *noRepeats {
 		return
 	}
 	prev := ""
