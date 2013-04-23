@@ -13,7 +13,7 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"runtime"
+	"path/filepath"
 	"sort"
 	"strings"
 	"unicode"
@@ -23,6 +23,7 @@ import (
 var knownWordsFiles = []string{"words", "w2006.txt"}
 var nTypos = flag.Int("n", 50, "number of words to print")
 var noRepeats = flag.Bool("r", false, "don't show repeated words words")
+var threshold = flag.Int("t", 10, "cutoff threshold; smaller means more words")
 
 var (
 	goroot string
@@ -30,14 +31,18 @@ var (
 )
 
 func init() {
-	goroot = runtime.GOROOT()
 	gopath = os.Getenv("GOPATH")
 }
 
 func main() {
 	flag.Parse()
 	for _, f := range knownWordsFiles {
-		for _, w := range read(getPath(f), nil, bufio.ScanWords) {
+		path, ok := getPath(f)
+		if !ok {
+			fmt.Fprintf(os.Stderr, "typo: can't find known words file %q\n", f)
+			continue
+		}
+		for _, w := range read(path, nil, bufio.ScanWords) {
 			known[w] = true
 		}
 	}
@@ -53,24 +58,19 @@ func main() {
 	spell()
 }
 
-func getPath(base string) string {
-	var dir string
-	if goroot != "" {
-		d := goroot + "/" + "src/pkg/code.google.com/p/rspace.cmd/typo/"
-		if _, err := os.Stat(d + base); err == nil {
-			dir = d
+func getPath(base string) (string, bool) {
+	if gopath != "" {
+		d := filepath.Join(gopath, "src", "code.google.com", "p", "rspace.cmd", "typo")
+		path := filepath.Join(d, base)
+		if _, err := os.Stat(path); err == nil {
+			return path, true
 		}
 	}
-	if dir == "" && gopath != "" {
-		d := gopath + "/" + "src/code.google.com/p/rspace.cmd/typo/"
-		if _, err := os.Stat(d + base); err == nil {
-			dir = d
-		}
+	path := filepath.Join(string(os.PathSeparator), "usr", "local", "plan9", "lib", base)
+	if _, err := os.Stat(path); err == nil {
+		return path, true
 	}
-	if dir == "" {
-		dir = "/usr/local/plan9/lib/"
-	}
-	return dir + base
+	return "", false
 }
 
 type Word struct {
@@ -79,11 +79,15 @@ type Word struct {
 	file    string
 	lineNum int
 	byteNum int
-	score   float64
+	score   int
 }
 
 func (w Word) String() string {
-	return fmt.Sprintf("%s:%d:%d %s", w.file, w.lineNum, w.byteNum, w.text)
+	if w.score == 0 {
+		return fmt.Sprintf("%s:%d:%d %s", w.file, w.lineNum, w.byteNum, w.text)
+	} else {
+		return fmt.Sprintf("%s:%d:%d [%d] %s", w.file, w.lineNum, w.byteNum, w.score, w.text)
+	}
 }
 
 // Sort interfaces for []*Word
@@ -96,7 +100,7 @@ func (t ByScore) Len() int {
 func (t ByScore) Less(i, j int) bool {
 	w1 := t[i]
 	w2 := t[j]
-	return w1.score < w2.score
+	return w1.score > w2.score // Sort down
 }
 
 func (t ByScore) Swap(i, j int) {
@@ -234,7 +238,7 @@ func stats() {
 		if known[*word.lower] {
 			continue
 		}
-		word.score = score(word.text)
+		word.score = int(score(word.text))
 	}
 }
 
@@ -300,7 +304,7 @@ func score(word string) float64 {
 		n++
 	}
 	scanTrigrams(word, fn)
-	return math.Sqrt(sumOfSquares / float64(n))
+	return 10 / math.Sqrt(sumOfSquares/float64(n))
 }
 
 func spell() {
@@ -320,7 +324,13 @@ func spell() {
 	}
 	words = out
 	sort.Sort(ByScore(words))
-	for i := 0; i < *nTypos && i < len(words); i++ {
+	for i, w := range words {
+		if i >= *nTypos {
+			break
+		}
+		if w.score < *threshold {
+			break
+		}
 		fmt.Println(words[i])
 	}
 }
