@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// This is a modern version of the original Unix typo command, a scan of whose man page
+// Typo is a modern version of the original Unix typo command, a scan of whose man page
 // is at
 //   http://cmd.rspace.googlecode.com/hg/typo/typo.png
 // This version handles Unicode, ignores nroff, and should soon deal better with HTML.
@@ -144,7 +144,7 @@ func read(file string, fd *os.File, split bufio.SplitFunc) []string {
 		var err error
 		fd, err = os.Open(file)
 		if err != nil {
-			fmt.Fprintf(os.Stdout, "typo: %s\n", file, err)
+			fmt.Fprintf(os.Stdout, "typo: %s\n", err)
 			os.Exit(2)
 		}
 		defer fd.Close()
