@@ -294,12 +294,11 @@ func incTrigrams(t trigram) {
 }
 
 func triScore(t trigram) float64 {
-	nxy := float64(diCounts[digram{t[0], t[1]}])
-	nyz := float64(diCounts[digram{t[1], t[2]}])
-	nxyz := float64(triCounts[t])
-	// The paper says to use -10 for log(0), but the count should never be zero.
+	nxy := float64(diCounts[digram{t[0], t[1]}] - 1)
+	nyz := float64(diCounts[digram{t[1], t[2]}] - 1)
+	nxyz := float64(triCounts[t] - 1)
+	// The paper says to use -10 for log(0), but its square is 100, so that can't be right.
 	if nxy == 0 || nyz == 0 || nxyz == 0 {
-		fmt.Fprintf(os.Stderr, "typo: bad trigram: %x\n", t)
 		return 0
 	}
 	logNxy := math.Log(nxy)
