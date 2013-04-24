@@ -2,6 +2,19 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// This is a modern version of the original Unix typo command, a scan of whose man page
+// is at
+//   https://code.google.com/p/rspace/source/browse/typo/typo.png?repo=cmd
+// This version handles Unicode, ignores nroff, and should soon deal better with HTML.
+// It provides location information for each typo, including the byte number on the line.
+// It also identifies repeated words, a a typographical error that occurs often.
+//
+// The -r flag suppresses reporting repeated words.
+// The -n and -t flags control how many "typos" to print.
+//
+// See the comments in the source for a description of the algorithm, extracted
+// from Bell Labs CSTR 18 by Robert Morris and Lorinda L. Cherry.
+//
 package main
 
 // A test case, with With punctuation. zxyz. Make sure the oddball on this line scores highly. (It does.)
@@ -21,7 +34,7 @@ import (
 )
 
 var knownWordsFiles = []string{"words", "w2006.txt"}
-var nTypos = flag.Int("n", 50, "number of words to print")
+var nTypos = flag.Int("n", 50, "maximum number of words to print")
 var noRepeats = flag.Bool("r", false, "don't show repeated words words")
 var threshold = flag.Int("t", 10, "cutoff threshold; smaller means more words")
 
@@ -308,10 +321,10 @@ func score(word string) float64 {
 }
 
 func spell() {
-	// Unique: show each word only once, and drop known words.
+	// Uniq the list: show each word only once; also drop known words.
 	sort.Sort(ByWord(words))
 	out := words[0:0]
-	prev := " " // Can't happen
+	prev := " "
 	for _, word := range words {
 		if word.text == prev {
 			continue
@@ -323,6 +336,7 @@ func spell() {
 		prev = word.text
 	}
 	words = out
+	// Sort the words by unlikelihood and print the top few.
 	sort.Sort(ByScore(words))
 	for i, w := range words {
 		if i >= *nTypos {
@@ -341,24 +355,16 @@ Thanks to Doug McIlroy for digging this out for me:
 From CSTR 18, Robert Morris and Lorinda L. Cherry, "Computer
 detection of  typographical errors", July 1974.
 
-
-
 ... a count is kept of each kind of digram and trigram in the
 document. For example, if the word `once' appears in the text,
 the counts corresponding to each of these five digrams and four
 trigrams are incremented.
 
-
-
  .o on nc ce e.
  .on onc nce ce.
 
-
-
 where the `.' signifies the beginning or ending of a word. These
 statistics are retained for later processing.
-
-
 
 ... 2726 common technical English words as used at Murray Hill
 ... are removed. [The list was created] by processing about one
@@ -371,18 +377,12 @@ table. For example, `murray' and `abstract' are very uncommon words
 in the documents sampled, yet they both appear once in virtually
 every document.
 
-
-
 ... a number is attached to each word by consulting the table of
 digrams and trigrams previously produced.
-
-
 
 The number is an index of peculiarity and reflects the likelihood
 of the hypothesis that the trigrams in the given word were produced
 from the same source that produced the trigram table.
-
-
 
 Each trigram in the current word is treated separately. An initial
 and terminal trigram is treated for each word so that the number
@@ -393,11 +393,7 @@ Each such count is reduced by one to remove the effect of the
 current word on the statistics. The resulting counts are n(xy),
 n(yz), and n(xyz). The index i(T) for the trigram T is set  equal to
 
-
-
      i(T) = (1/2)[log n(xy) + log n(yz)] - log n(xyz)
-
-
 
 This index is invariant with the size of the document, i.e. it needs
 no normalization.  It measures the evidence against the hypothesis
@@ -405,8 +401,6 @@ that the trigram was produced by the same source that produced the
 digram and trigram tables in the sense of References 1 and 2. In the
 case that one of the digram or trigram counts is zero, the log of
 that count is taken to be -10.
-
-
 
 A variety of methods were tried to combine the trigram indices to
 obtain an index for the whole word, including
@@ -416,15 +410,11 @@ obtain an index for the whole word, including
   indices, and
 - the largest of the trigram indices.
 
-
-
 All were moderately effective; the first tended to swamp out the
 effect of a really strange trigram in a long word and the latter
 was insensitive to a sequence of strange trigrams whose cumulative
 evidence should have made a word suspcious. The second on trial
 appeared to be a satisfactory compromise and was adopted.
-
-
 
 The words with their attached indices are sorted on the index in
 descending order and printed in a pleasing three-column format. [The
@@ -439,7 +429,6 @@ certainly appears just once in a document.
 [1] Good, I. j. Probability and the Weighing of Evidence. Charles
 Griffin & Co., London, 1950.
 
-
-
 [2] Kullback, S. and Leibler, R. A. On Information and Sufficiency.
-Annals of Math. Stat., 22 (1951), pp. 79-86*/
+Annals of Math. Stat., 22 (1951), pp. 79-86
+*/
