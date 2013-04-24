@@ -4,7 +4,7 @@
 
 // This is a modern version of the original Unix typo command, a scan of whose man page
 // is at
-//   https://code.google.com/p/rspace/source/browse/typo/typo.png?repo=cmd
+//   http://cmd.rspace.googlecode.com/hg/typo/typo.png
 // This version handles Unicode, ignores nroff, and should soon deal better with HTML.
 // It provides location information for each typo, including the byte number on the line.
 // It also identifies repeated words, a a typographical error that occurs often.
