@@ -5,12 +5,13 @@
 // Typo is a modern version of the original Unix typo command, a scan of whose man page
 // is at
 //   http://cmd.rspace.googlecode.com/hg/typo/typo.png
-// This version handles Unicode, ignores nroff, and should soon deal better with HTML.
+// This version ignores nroff but handles Unicode and can strip simple HTML tags.
 // It provides location information for each typo, including the byte number on the line.
 // It also identifies repeated words, a a typographical error that occurs often.
 //
 // The -r flag suppresses reporting repeated words.
-// The -n and -t flags control how many "typos" to print.
+// The -n and -t flags control how many "typos" to print.'
+// The -html flag enables simple filtering of HTML from the input.
 //
 // See the comments in the source for a description of the algorithm, extracted
 // from Bell Labs CSTR 18 by Robert Morris and Lorinda L. Cherry.
@@ -34,9 +35,12 @@ import (
 )
 
 var knownWordsFiles = []string{"words", "w2006.txt"}
-var nTypos = flag.Int("n", 50, "maximum number of words to print")
-var noRepeats = flag.Bool("r", false, "don't show repeated words words")
-var threshold = flag.Int("t", 10, "cutoff threshold; smaller means more words")
+var (
+	nTypos     = flag.Int("n", 50, "maximum number of words to print")
+	noRepeats  = flag.Bool("r", false, "don't show repeated words words")
+	threshold  = flag.Int("t", 10, "cutoff threshold; smaller means more words")
+	filterHTML = flag.Bool("html", false, "filter HTML tags from input")
+)
 
 var (
 	goroot string
@@ -45,6 +49,11 @@ var (
 
 func init() {
 	gopath = os.Getenv("GOPATH")
+	if unicode.IsPunct('<') {
+		// This must be true for HTML filtering to work.
+		fmt.Fprintf(os.Stderr, "typo: unicode says < is punctuation")
+		*filterHTML = false
+	}
 }
 
 func main() {
@@ -183,8 +192,54 @@ func add(file string, fd *os.File) {
 	}
 }
 
+// leadingHTMLLen returns the length of all HTML tags at the start of the text.
+// It assumes a tag goes from an initial "<" to the first closing ">".
+func leadingHTMLLen(text string) int {
+	if len(text) == 0 || text[0] != '<' {
+		return 0
+	}
+	n := strings.IndexRune(text, '>')
+	if n < 0 {
+		return 0
+	}
+	n++ // Absorb closing '>'.
+	return n + leadingHTMLLen(text[n:])
+}
+
+// trailingHTMLLen mirrors leadingHTMLLen at the end of the text.
+func trailingHTMLLen(text string) int {
+	if len(text) == 0 || text[len(text)-1] != '>' {
+		return 0
+	}
+	// TODO: There should be a LastIndexRune.
+	n := strings.LastIndex(text, "<")
+	if n < 0 {
+		return 0
+	}
+	return len(text) - n + trailingHTMLLen(text[:len(text)-n])
+}
+
 func addWord(text, file string, lineNum, byteNum int) {
-	text = strings.TrimFunc(text, unicode.IsPunct)
+	// Note: '<' is not punctuation according to Unicode.
+	n := len(text)
+	text = strings.TrimLeftFunc(text, unicode.IsPunct)
+	byteNum += n - len(text)
+	text = strings.TrimRightFunc(text, unicode.IsPunct)
+	if *filterHTML {
+		// Easily defeated by spaces and newlines, but gets things like <code><em>foo</em></code>.
+		n := leadingHTMLLen(text)
+		text = text[n:]
+		byteNum += n
+		n = trailingHTMLLen(text)
+		text = text[:len(text)-n]
+		if len(text) == 0 {
+			return
+		}
+		n = len(text)
+		text = strings.TrimLeftFunc(text, unicode.IsPunct)
+		byteNum += n - len(text)
+		text = strings.TrimRightFunc(text, unicode.IsPunct)
+	}
 	// There must be a letter.
 	hasLetter := false
 	for _, c := range text {
