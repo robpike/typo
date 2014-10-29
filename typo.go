@@ -16,7 +16,7 @@
 // See the comments in the source for a description of the algorithm, extracted
 // from Bell Labs CSTR 18 by Robert Morris and Lorinda L. Cherry.
 //
-package main
+package main // import "robpike.io/cmd/typo"
 
 // A test case, with With punctuation. zxyz. Make sure the oddball on this line scores highly. (It does.)
 // Also make sure that "with" shows up doubled despite the case change.
@@ -82,7 +82,7 @@ func main() {
 
 func getPath(base string) (string, bool) {
 	if gopath != "" {
-		d := filepath.Join(gopath, "src", "code.google.com", "p", "rspace.cmd", "typo")
+		d := filepath.Join(gopath, "src", "robpike.io", "cmd", "typo")
 		path := filepath.Join(d, base)
 		if _, err := os.Stat(path); err == nil {
 			return path, true
