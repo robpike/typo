@@ -4,7 +4,7 @@
 
 // Typo is a modern version of the original Unix typo command, a scan of whose man page
 // is at
-//   http://cmd.rspace.googlecode.com/hg/typo/typo.png
+//   https://raw.githubusercontent.com/robpike/typo/master/typo.png
 // This version ignores nroff but handles Unicode and can strip simple HTML tags.
 // It provides location information for each typo, including the byte number on the line.
 // It also identifies repeated words, a a typographical error that occurs often.
