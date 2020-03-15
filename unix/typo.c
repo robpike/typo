@@ -71,14 +71,13 @@ main(argc,argv) int argc; char *argv[]; {
 		--argc;
 	}
 	if(!neng) {
-//		salt = open("/usr/lib/salt",0);
-		salt = open("/Users/r/Downloads/salt",0);
+		salt = open("/usr/lib/salt",0);
 		er = read(salt,tab.table,21200);
 			if(er != 21200)err("read salt");
 		close(salt);
 		}
-/*	if((signal(2,1) & 1) != 1)*/
-/*	signal(2,unl);*/
+	if((signal(2,1) & 1) != 1)
+		signal(2,unl);
 	name[0] = strdup("/tmp/ttmpa1");
 	name[1] = strdup("/tmp/ttmpa2");
 	name[2] = strdup("/tmp/ttmpa3");
@@ -118,17 +117,13 @@ main(argc,argv) int argc; char *argv[]; {
 	flsh(0,0);
 	close(file[0]);
 	sw = fork();
-/*		if(sw == 0){execl("/usr/bin/usort","usort","-o",name[2],name[0],NULL);*/
-		if(sw == 0){
-			execl("/usr/bin/sort","sort","-u","-o",name[2],name[0],NULL);
-			err("sort");
-		}
-		if(sw == -1)err("fork");
+	if(sw == 0){execl("/usr/bin/usort","usort","-o",name[2],name[0],NULL);
+	if(sw == -1)err("fork");
 	er = wait(0);
 		if(er != sw)err("probs");
 	file[0] = creat(name[0],0666);
 		if(file[0] < 0)err("creat tmp");
-	file[1] = open("/usr/local/plan9/lib/words"/*"/usr/lib/w2006"*/,0);
+	file[1] = open("/usr/lib/w2006",0);
 		if(file[1] < 0)err("open w2006");
 	ptr[1] = 1;
 	for(k=0;((c = w2006[k] = get(1)) != '\n');k++)
@@ -164,7 +159,7 @@ main(argc,argv) int argc; char *argv[]; {
 		}
 	}
 done:
-	close(file[2]); 
+	close(file[2]);
 	unlink(name[2]);
 	flsh(0,0);
 	close(file[1]);
@@ -197,8 +192,7 @@ done:
 	close(file[0]);
 
 	sw = fork();
-//		if(sw == 0){execl("/usr/bin/sort","sort","+0nr", "+1","-o",name[1],name[1]
-		if(sw == 0){execl("/usr/bin/sort","sort","-nr","-o",name[1],name[1]
+		if(sw == 0){execl("/usr/bin/sort","sort","+0nr", "+1","-o",name[1],name[1]
 			,NULL);
 			err("sort"); }
 		if(sw == -1)err("fork");
@@ -217,8 +211,7 @@ done:
 				while((c = fptr[i++]) != 0)
 					*ffptr++ = c;
 				*ffptr = 0;
-//				execl("/usr/bin/pr","pr","-3", "-h",ffbuf,name[1],NULL);
-				execl("/usr/local/plan9/bin/mc","mc",name[1],NULL);
+				execl("/usr/bin/pr","pr","-3", "-h",ffbuf,name[1],NULL);
 				err("pr");
 		}
 	}
