@@ -4,7 +4,9 @@
 
 // Typo is a modern version of the original Unix typo command, a scan of whose man page
 // is at
-//   https://github.com/robpike/typo/blob/master/typo.png
+//
+//	https://github.com/robpike/typo/blob/master/typo.png
+//
 // and whose early C source code is in the unix subdirectory of this repo.
 //
 // This Go version ignores nroff but handles Unicode and can strip simple HTML tags.
@@ -17,7 +19,6 @@
 //
 // See the comments in the source for a description of the algorithm, extracted
 // from Bell Labs CSTR 18 by Robert Morris and Lorinda L. Cherry.
-//
 package main // import "robpike.io/cmd/typo"
 
 // A test case, with With punctuation. zxyz. Make sure the oddball on this line scores highly. (It does.)
@@ -25,18 +26,22 @@ package main // import "robpike.io/cmd/typo"
 
 import (
 	"bufio"
+	"bytes"
+	_ "embed"
 	"flag"
 	"fmt"
+	"io"
 	"math"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"unicode"
 	"unicode/utf8"
 )
 
-var knownWordsFiles = []string{"words", "w2006.txt"}
+//go:embed w2006.txt
+var wordsFile []byte
+
 var (
 	nTypos     = flag.Int("n", 50, "maximum number of words to print")
 	noRepeats  = flag.Bool("r", false, "don't show repeated words words")
@@ -44,13 +49,7 @@ var (
 	filterHTML = flag.Bool("html", false, "filter HTML tags from input")
 )
 
-var (
-	goroot string
-	gopath string
-)
-
 func init() {
-	gopath = os.Getenv("GOPATH")
 	if unicode.IsPunct('<') {
 		// This must be true for HTML filtering to work.
 		fmt.Fprintf(os.Stderr, "typo: unicode says < is punctuation")
@@ -60,41 +59,18 @@ func init() {
 
 func main() {
 	flag.Parse()
-	for _, f := range knownWordsFiles {
-		path, ok := getPath(f)
-		if !ok {
-			fmt.Fprintf(os.Stderr, "typo: can't find known words file %q\n", f)
-			continue
-		}
-		for _, w := range read(path, nil, bufio.ScanWords) {
-			known[w] = true
-		}
+	for _, w := range read("<wordsFile>", bytes.NewReader(wordsFile), bufio.ScanWords) {
+		known[w] = true
 	}
 	if len(flag.Args()) == 0 {
 		add("<stdin>", os.Stdin)
-	} else {
-		for _, f := range flag.Args() {
-			add(f, nil)
-		}
+	}
+	for _, f := range flag.Args() {
+		add(f, nil)
 	}
 	repeats()
 	stats()
 	spell()
-}
-
-func getPath(base string) (string, bool) {
-	if gopath != "" {
-		d := filepath.Join(gopath, "src", "robpike.io", "cmd", "typo")
-		path := filepath.Join(d, base)
-		if _, err := os.Stat(path); err == nil {
-			return path, true
-		}
-	}
-	path := filepath.Join(string(os.PathSeparator), "usr", "local", "plan9", "lib", base)
-	if _, err := os.Stat(path); err == nil {
-		return path, true
-	}
-	return "", false
 }
 
 type Word struct {
@@ -150,17 +126,17 @@ func (t ByWord) Swap(i, j int) {
 var words = make([]*Word, 0, 1000)
 var known = make(map[string]bool) // loaded from knownWordsFiles
 
-func read(file string, fd *os.File, split bufio.SplitFunc) []string {
-	if fd == nil {
-		var err error
-		fd, err = os.Open(file)
+func read(file string, r io.Reader, split bufio.SplitFunc) []string {
+	if r == nil {
+		f, err := os.Open(file)
 		if err != nil {
 			fmt.Fprintf(os.Stdout, "typo: %s\n", err)
 			os.Exit(2)
 		}
-		defer fd.Close()
+		defer f.Close()
+		r = f
 	}
-	scanner := bufio.NewScanner(fd)
+	scanner := bufio.NewScanner(r)
 	scanner.Split(split)
 	words := make([]string, 0, 1000)
 	for scanner.Scan() {
@@ -173,8 +149,8 @@ func read(file string, fd *os.File, split bufio.SplitFunc) []string {
 	return words
 }
 
-func add(file string, fd *os.File) {
-	lines := read(file, fd, bufio.ScanLines)
+func add(file string, r io.Reader) {
+	lines := read(file, r, bufio.ScanLines)
 	for lineNum, line := range lines {
 		inWord := false
 		wordStart := 1
