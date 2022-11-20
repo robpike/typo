@@ -1,3 +1,3 @@
-module github.com/robpike/typo
+module robpike.io/cmd/typo
 
 go 1.19
