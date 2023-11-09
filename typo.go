@@ -349,7 +349,11 @@ func score(word string) float64 {
 		n++
 	}
 	scanTrigrams(word, fn)
-	return 10 / math.Sqrt(sumOfSquares/float64(n))
+	s := 10 / math.Sqrt(sumOfSquares/float64(n))
+	if math.IsInf(s, 0) {
+		s = 100.
+	}
+	return s
 }
 
 func spell() {
